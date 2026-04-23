@@ -1,0 +1,960 @@
+Recipe 12: Setting up Terraform with AWS
+
+# =========================================
+# STEP 1: AWS CLI Check
+# =========================================
+aws --version
+
+# =========================================
+# STEP 2: Configure AWS Credentials
+# =========================================
+aws configure
+# Enter:
+# AWS Access Key ID: <your-access-key>
+# AWS Secret Access Key: <your-secret-key>
+# Default region name: ap-south-1
+# Default output format: json
+
+# =========================================
+# STEP 3: Terraform Check
+# =========================================
+terraform -version
+
+# =========================================
+# STEP 4: Create Project Folder
+# =========================================
+mkdir terraform-aws-setup
+cd terraform-aws-setup
+
+# =========================================
+# STEP 5: Open Folder in VS Code
+# =========================================
+code .	
+
+
+
+Recipe 13: Creating and Deploying a Simple Infrastructure using Terraform
+
+# =========================================
+# STEP 1: Create Project Folder
+# =========================================
+mkdir terraform-s3
+cd terraform-s3
+
+# =========================================
+# STEP 2: Create main.tf File
+# =========================================
+cat > main.tf <<EOL
+provider "aws" {
+  region = "ap-south-1"
+}
+
+resource "aws_s3_bucket" "my_bucket" {
+  bucket = "rishi-terraform-bucket-2026-001"
+
+  tags = {
+    Name        = "My Terraform Bucket"
+    Environment = "Dev"
+  }
+}
+EOL
+
+# =========================================
+# STEP 3: Initialize Terraform
+# =========================================
+terraform init
+
+# =========================================
+# STEP 4: Generate Plan
+# =========================================
+terraform plan
+
+# =========================================
+# STEP 5: Apply Configuration
+# =========================================
+terraform apply
+
+# Enter:
+# yes
+
+# =========================================
+# STEP 6: Destroy Resource
+# =========================================
+terraform destroy
+
+# Enter:
+# yes
+
+
+Recipe 14: Managing Terraform State in a Team
+
+# =========================================
+# STEP 1: Create Project Folder
+# =========================================
+mkdir terraform-remote-state
+cd terraform-remote-state
+
+# =========================================
+# STEP 2: Create S3 Bucket (for state)
+# =========================================
+cat > main.tf <<EOL
+provider "aws" {
+  region = "ap-south-1"
+}
+
+resource "aws_s3_bucket" "state_bucket" {
+  bucket = "rishi-terraform-state-bucket-2026"
+
+  tags = {
+    Name = "Terraform State Bucket"
+  }
+}
+
+resource "aws_s3_bucket_versioning" "versioning" {
+  bucket = aws_s3_bucket.state_bucket.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+EOL
+
+# =========================================
+# STEP 3: Initialize & Create Bucket
+# =========================================
+terraform init
+terraform apply -auto-approve
+
+# =========================================
+# STEP 4: Update Backend Configuration
+# =========================================
+cat > backend.tf <<EOL
+terraform {
+  backend "s3" {
+    bucket = "rishi-terraform-state-bucket-2026"
+    key    = "terraform.tfstate"
+    region = "ap-south-1"
+  }
+}
+EOL
+
+# =========================================
+# STEP 5: Reinitialize Terraform
+# =========================================
+terraform init
+
+# =========================================
+# STEP 6: Verify State in S3
+# =========================================
+# Go to AWS Console → S3 → check terraform.tfstate file
+
+# =========================================
+# STEP 7: Simulate Team Workflow
+# =========================================
+cd ..
+cp -r terraform-remote-state terraform-remote-state-copy
+cd terraform-remote-state-copy
+
+terraform init
+terraform plan
+
+
+Recipe 15: Provisioning a Virtual Machine using Terraform
+
+# =========================================
+# STEP 1: Create Project Folder
+# =========================================
+mkdir terraform-ec2
+cd terraform-ec2
+
+# =========================================
+# STEP 2: Create main.tf File
+# =========================================
+cat > main.tf <<EOL
+provider "aws" {
+  region = "ap-south-1"
+}
+
+resource "aws_instance" "my_ec2" {
+  ami           = "ami-0f58b397bc5c1f2e8"
+  instance_type = "t2.micro"
+  key_name      = "my-key"
+
+  tags = {
+    Name = "Terraform-EC2"
+  }
+}
+EOL
+
+# =========================================
+# STEP 3: Initialize Terraform
+# =========================================
+terraform init
+
+# =========================================
+# STEP 4: Plan
+# =========================================
+terraform plan
+
+# =========================================
+# STEP 5: Apply
+# =========================================
+terraform apply
+# Enter: yes
+
+# =========================================
+# STEP 6: Destroy
+# =========================================
+terraform destroy
+# Enter: yes
+
+
+Recipe 16: Provisioning a Web Server using Terraform
+
+# =========================================
+# STEP 1: Create Project Folder
+# =========================================
+mkdir terraform-webserver
+cd terraform-webserver
+
+# =========================================
+# STEP 2: Create main.tf File
+# =========================================
+cat > main.tf <<EOL
+provider "aws" {
+  region = "ap-south-1"
+}
+
+resource "aws_security_group" "web_sg" {
+  name = "web-sg"
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_instance" "web_server" {
+  ami           = "ami-0f58b397bc5c1f2e8"
+  instance_type = "t2.micro"
+  key_name      = "my-key"
+  security_groups = [aws_security_group.web_sg.name]
+
+  user_data = <<-EOF
+              #!/bin/bash
+              apt update
+              apt install -y apache2
+              systemctl start apache2
+              systemctl enable apache2
+              echo "Hello from Terraform Web Server" > /var/www/html/index.html
+              EOF
+
+  tags = {
+    Name = "Terraform-WebServer"
+  }
+}
+EOL
+
+# =========================================
+# STEP 3: Initialize Terraform
+# =========================================
+terraform init
+
+# =========================================
+# STEP 4: Plan
+# =========================================
+terraform plan
+
+# =========================================
+# STEP 5: Apply
+# =========================================
+terraform apply
+# Enter: yes
+
+# =========================================
+# STEP 6: Get Public IP
+# =========================================
+# Go to AWS Console → EC2 → copy Public IP
+
+# =========================================
+# STEP 7: Open in Browser
+# =========================================
+# http://<public-ip>
+
+# =========================================
+# STEP 8: Destroy
+# =========================================
+terraform destroy
+# Enter: yes
+
+
+Recipe 17: Provisioning a Database using Terraform
+
+# =========================================
+# STEP 1: Create Project Folder
+# =========================================
+mkdir terraform-rds
+cd terraform-rds
+
+# =========================================
+# STEP 2: Create main.tf File
+# =========================================
+cat > main.tf <<EOL
+provider "aws" {
+  region = "ap-south-1"
+}
+
+resource "aws_security_group" "db_sg" {
+  name = "db-sg"
+
+  ingress {
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_db_instance" "my_db" {
+  identifier         = "terraform-db"
+  engine             = "mysql"
+  instance_class     = "db.t3.micro"
+  allocated_storage  = 20
+
+  username = "admin"
+  password = "Admin1234"
+
+  publicly_accessible = true
+  skip_final_snapshot = true
+
+  vpc_security_group_ids = [aws_security_group.db_sg.id]
+
+  tags = {
+    Name = "Terraform-DB"
+  }
+}
+EOL
+
+# =========================================
+# STEP 3: Initialize Terraform
+# =========================================
+terraform init
+
+# =========================================
+# STEP 4: Plan
+# =========================================
+terraform plan
+
+# =========================================
+# STEP 5: Apply
+# =========================================
+terraform apply
+# Enter: yes
+
+# =========================================
+# STEP 6: Verify in AWS
+# =========================================
+# Go to AWS Console → RDS → Databases → check status = Available
+
+# =========================================
+# STEP 7: Destroy
+# =========================================
+terraform destroy
+# Enter: yes
+
+
+Recipe 18: Deploying a Web Application using Terraform
+
+# =========================================
+# STEP 1: Create Project Folder
+# =========================================
+mkdir terraform-webapp
+cd terraform-webapp
+
+# =========================================
+# STEP 2: Create main.tf File
+# =========================================
+cat > main.tf <<EOL
+provider "aws" {
+  region = "ap-south-1"
+}
+
+# Security Group
+resource "aws_security_group" "web_sg" {
+  name = "web-sg"
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# EC2 Instance (Web Server)
+resource "aws_instance" "web_server" {
+  ami           = "ami-0f58b397bc5c1f2e8"
+  instance_type = "t2.micro"
+  key_name      = "my-key"
+  security_groups = [aws_security_group.web_sg.name]
+
+  user_data = <<-EOF
+#!/bin/bash
+apt update
+apt install -y apache2 mysql-client
+systemctl start apache2
+systemctl enable apache2
+echo "Web App Connected to Database" > /var/www/html/index.html
+EOF
+
+  tags = {
+    Name = "Web-App-Server"
+  }
+}
+
+# RDS Database
+resource "aws_db_instance" "db" {
+  identifier         = "webapp-db"
+  engine             = "mysql"
+  instance_class     = "db.t3.micro"
+  allocated_storage  = 20
+
+  username = "admin"
+  password = "Admin1234"
+
+  publicly_accessible = true
+  skip_final_snapshot = true
+
+  vpc_security_group_ids = [aws_security_group.web_sg.id]
+
+  tags = {
+    Name = "Web-App-DB"
+  }
+}
+EOL
+
+# =========================================
+# STEP 3: Initialize Terraform
+# =========================================
+terraform init
+
+# =========================================
+# STEP 4: Plan
+# =========================================
+terraform plan
+
+# =========================================
+# STEP 5: Apply
+# =========================================
+terraform apply
+# Enter: yes
+
+# =========================================
+# STEP 6: Verify
+# =========================================
+# Browser: http://<EC2 Public IP>
+# Check RDS in AWS Console
+
+# =========================================
+# STEP 7: Destroy
+# =========================================
+terraform destroy
+# Enter: yes
+
+
+Recipe 19: Managing Infrastructure Changes using Terraform
+
+# =========================================
+# STEP 1: Use Existing Project Folder
+# =========================================
+cd terraform-ec2
+
+# =========================================
+# STEP 2: Modify main.tf File
+# =========================================
+# Change instance type and tag
+
+cat > main.tf <<EOL
+provider "aws" {
+  region = "ap-south-1"
+}
+
+resource "aws_instance" "my_ec2" {
+  ami           = "ami-0f58b397bc5c1f2e8"
+  instance_type = "t2.small"   # changed from t2.micro
+  key_name      = "my-key"
+
+  tags = {
+    Name = "Updated-EC2"
+  }
+}
+EOL
+
+# =========================================
+# STEP 3: Check Changes
+# =========================================
+terraform plan
+
+# =========================================
+# STEP 4: Apply Changes
+# =========================================
+terraform apply
+# Enter: yes
+
+# =========================================
+# STEP 5: Verify in AWS
+# =========================================
+# Go to AWS Console → EC2 → check updated instance type and tag
+
+
+Recipe 20: Using Terraform to Configure Load Balancers
+# =========================================
+# STEP 1: Create Project Folder
+# =========================================
+mkdir terraform-alb
+cd terraform-alb
+
+# =========================================
+# STEP 2: Create main.tf File
+# =========================================
+cat > main.tf <<EOL
+provider "aws" {
+  region = "ap-south-1"
+}
+
+# Security Group
+resource "aws_security_group" "alb_sg" {
+  name = "alb-sg"
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# EC2 Instance 1
+resource "aws_instance" "server1" {
+  ami           = "ami-0f58b397bc5c1f2e8"
+  instance_type = "t2.micro"
+  key_name      = "my-key"
+  security_groups = [aws_security_group.alb_sg.name]
+
+  user_data = <<-EOF
+#!/bin/bash
+apt update
+apt install -y apache2
+echo "Server 1" > /var/www/html/index.html
+systemctl start apache2
+EOF
+
+  tags = {
+    Name = "Server1"
+  }
+}
+
+# EC2 Instance 2
+resource "aws_instance" "server2" {
+  ami           = "ami-0f58b397bc5c1f2e8"
+  instance_type = "t2.micro"
+  key_name      = "my-key"
+  security_groups = [aws_security_group.alb_sg.name]
+
+  user_data = <<-EOF
+#!/bin/bash
+apt update
+apt install -y apache2
+echo "Server 2" > /var/www/html/index.html
+systemctl start apache2
+EOF
+
+  tags = {
+    Name = "Server2"
+  }
+}
+
+# Target Group
+resource "aws_lb_target_group" "tg" {
+  name     = "target-group"
+  port     = 80
+  protocol = "HTTP"
+  vpc_id   = "vpc-xxxxxxxx"  # ⚠️ replace with your VPC ID
+}
+
+# Load Balancer
+resource "aws_lb" "alb" {
+  name               = "my-alb"
+  load_balancer_type = "application"
+  subnets            = ["subnet-xxxx", "subnet-yyyy"]  # ⚠️ replace
+
+  security_groups = [aws_security_group.alb_sg.id]
+}
+
+# Listener
+resource "aws_lb_listener" "listener" {
+  load_balancer_arn = aws_lb.alb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.tg.arn
+  }
+}
+
+# Attach instances
+resource "aws_lb_target_group_attachment" "t1" {
+  target_group_arn = aws_lb_target_group.tg.arn
+  target_id        = aws_instance.server1.id
+  port             = 80
+}
+
+resource "aws_lb_target_group_attachment" "t2" {
+  target_group_arn = aws_lb_target_group.tg.arn
+  target_id        = aws_instance.server2.id
+  port             = 80
+}
+EOL
+
+# =========================================
+# STEP 3: Initialize
+# =========================================
+terraform init
+
+# =========================================
+# STEP 4: Plan
+# =========================================
+terraform plan
+
+# =========================================
+# STEP 5: Apply
+# =========================================
+terraform apply
+# Enter: yes
+
+# =========================================
+# STEP 6: Test
+# =========================================
+# Copy Load Balancer DNS
+# Open in browser
+
+# =========================================
+# STEP 7: Destroy
+# =========================================
+terraform destroy
+# Enter: yes
+
+Recipe 21: Managing Infrastructure Dependencies with Terraform
+
+# =========================================
+# STEP 1: Create Project Folder
+# =========================================
+mkdir terraform-dependency
+cd terraform-dependency
+
+# =========================================
+# STEP 2: Create main.tf File
+# =========================================
+cat > main.tf <<EOL
+provider "aws" {
+  region = "ap-south-1"
+}
+
+# VPC
+resource "aws_vpc" "my_vpc" {
+  cidr_block = "10.0.0.0/16"
+}
+
+# Subnet
+resource "aws_subnet" "my_subnet" {
+  vpc_id     = aws_vpc.my_vpc.id
+  cidr_block = "10.0.1.0/24"
+}
+
+# EC2 Instance
+resource "aws_instance" "my_ec2" {
+  ami           = "ami-0f58b397bc5c1f2e8"
+  instance_type = "t2.micro"
+
+  subnet_id = aws_subnet.my_subnet.id
+
+  tags = {
+    Name = "Dependency-EC2"
+  }
+}
+EOL
+
+# =========================================
+# STEP 3: Initialize
+# =========================================
+terraform init
+
+# =========================================
+# STEP 4: Plan
+# =========================================
+terraform plan
+
+# =========================================
+# STEP 5: Apply
+# =========================================
+terraform apply
+# Enter: yes
+
+# =========================================
+# STEP 6: Verify
+# =========================================
+# Check order: VPC → Subnet → EC2 in output
+
+# =========================================
+# STEP 7: Destroy
+# =========================================
+terraform destroy
+# Enter: yes
+
+Recipe 22: Using Terraform for Zero-Downtime Deployment
+
+# =========================================
+# STEP 1: Create Project Folder
+# =========================================
+mkdir terraform-zero-downtime
+cd terraform-zero-downtime
+
+# =========================================
+# STEP 2: Create main.tf File
+# =========================================
+cat > main.tf <<EOL
+provider "aws" {
+  region = "ap-south-1"
+}
+
+# Security Group
+resource "aws_security_group" "web_sg" {
+  name = "zero-sg"
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# EC2 Instance
+resource "aws_instance" "web" {
+  ami           = "ami-0f58b397bc5c1f2e8"
+  instance_type = "t2.micro"
+  security_groups = [aws_security_group.web_sg.name]
+
+  user_data = <<-EOF
+#!/bin/bash
+apt update
+apt install -y apache2
+echo "Zero Downtime Server" > /var/www/html/index.html
+systemctl start apache2
+EOF
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = {
+    Name = "Zero-Downtime"
+  }
+}
+EOL
+
+# =========================================
+# STEP 3: Initialize
+# =========================================
+terraform init
+
+# =========================================
+# STEP 4: Plan
+# =========================================
+terraform plan
+
+# =========================================
+# STEP 5: Apply
+# =========================================
+terraform apply
+# Enter: yes
+
+# =========================================
+# STEP 6: Modify (AMI change)
+# =========================================
+# Change AMI in main.tf and run again
+
+terraform plan
+terraform apply
+# Enter: yes
+
+# =========================================
+# STEP 7: Destroy
+# =========================================
+terraform destroy
+# Enter: yes
+
+Recipe 23: Scaling Infrastructure using Terraform
+
+# =========================================
+# STEP 1: Create Project Folder
+# =========================================
+mkdir terraform-autoscaling
+cd terraform-autoscaling
+
+# =========================================
+# STEP 2: Create main.tf File
+# =========================================
+cat > main.tf <<EOL
+provider "aws" {
+  region = "ap-south-1"
+}
+
+# Security Group
+resource "aws_security_group" "asg_sg" {
+  name = "asg-sg"
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# Launch Template
+resource "aws_launch_template" "lt" {
+  name_prefix   = "asg-template"
+  image_id      = "ami-0f58b397bc5c1f2e8"
+  instance_type = "t2.micro"
+
+  network_interfaces {
+    security_groups = [aws_security_group.asg_sg.id]
+  }
+
+  user_data = base64encode(<<-EOF
+#!/bin/bash
+apt update
+apt install -y apache2
+echo "Auto Scaling Server" > /var/www/html/index.html
+systemctl start apache2
+EOF
+  )
+}
+
+# Auto Scaling Group
+resource "aws_autoscaling_group" "asg" {
+  desired_capacity     = 2
+  max_size             = 3
+  min_size             = 1
+
+  vpc_zone_identifier = ["subnet-xxxx"]  # replace
+
+  launch_template {
+    id      = aws_launch_template.lt.id
+    version = "\$Latest"
+  }
+}
+
+# Scaling Policy
+resource "aws_autoscaling_policy" "scale_up" {
+  name                   = "scale-up"
+  scaling_adjustment     = 1
+  adjustment_type        = "ChangeInCapacity"
+  autoscaling_group_name = aws_autoscaling_group.asg.name
+}
+EOL
+
+# =========================================
+# STEP 3: Initialize
+# =========================================
+terraform init
+
+# =========================================
+# STEP 4: Plan
+# =========================================
+terraform plan
+
+# =========================================
+# STEP 5: Apply
+# =========================================
+terraform apply
+# Enter: yes
+
+# =========================================
+# STEP 6: Verify
+# =========================================
+# Go to AWS → EC2 → check multiple instances
+# Auto Scaling Group → check scaling activity
+
+# =========================================
+# STEP 7: Destroy
+# =========================================
+terraform destroy
+# Enter: yes
