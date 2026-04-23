@@ -1,0 +1,7 @@
+Account id : 488850522159
+
+root user email :- priyanshusardhara7@gmail.com
+root user password :- priyanshu_0709
+
+IAM user name :- priyanshu_IAM
+IAM user password :- PS_070905
